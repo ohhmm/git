@@ -32,6 +32,7 @@ for branch in $BRANCHES; do
   if [ "$(git rev-list $branch..origin/$MAIN_BRANCH)" = "" ] && [ "$(git rev-list origin/$MAIN_BRANCH..$branch)" = "" ]; then
     echo "Branch $branch is identical to $MAIN_BRANCH and will be deleted"
     # If identical, delete the branch
+git checkout $MAIN_BRANCH
     git branch -d $branch
   else
     echo "Branch $branch is not identical to $MAIN_BRANCH and will not be deleted"
