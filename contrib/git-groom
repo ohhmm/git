@@ -1,0 +1,42 @@
+#!/bin/bash
+# git-groom: Rebases all branches onto the main branch and deletes any that match the main branch after rebase.
+
+# Exit on error
+set -e
+
+# Identify the main branch
+MAIN_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@')
+
+# Fetch the latest updates from the origin
+git fetch origin
+
+# Get a list of all branches except the main branch, the current branch, and the 'add-git-groom-command' branch
+CURRENT_BRANCH=$(git symbolic-ref --short HEAD)
+EXCLUDED_BRANCHES="^$MAIN_BRANCH$|^$CURRENT_BRANCH$|^add-git-groom-command$"
+BRANCHES=$(git for-each-ref --format='%(refname:short)' refs/heads/ | grep -Ev "$EXCLUDED_BRANCHES")
+
+echo "Main branch is $MAIN_BRANCH"
+echo "Current branch is $CURRENT_BRANCH"
+echo "Other branches are: $BRANCHES"
+
+# Iterate over each branch
+for branch in $BRANCHES; do
+  echo "Processing branch $branch"
+  # Checkout the branch
+  git checkout $branch
+  # Rebase the branch onto the main branch
+  git rebase origin/$MAIN_BRANCH $branch
+
+  # After rebasing, check if the branch is identical to the main branch
+  # Use git rev-list to compare the commit histories of the two branches
+  if [ "$(git rev-list $branch..origin/$MAIN_BRANCH)" = "" ] && [ "$(git rev-list origin/$MAIN_BRANCH..$branch)" = "" ]; then
+    echo "Branch $branch is identical to $MAIN_BRANCH and will be deleted"
+    # If identical, delete the branch
+    git branch -d $branch
+  else
+    echo "Branch $branch is not identical to $MAIN_BRANCH and will not be deleted"
+  fi
+done
+
+# Checkout the main branch
+git checkout $MAIN_BRANCH
